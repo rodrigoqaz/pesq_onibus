@@ -1,0 +1,402 @@
+---
+title: "Pesquisa Ônibus"
+author: 'Aluno: Rodrigo de Souza Oliveira'
+output:
+  html_document:
+    df_print: paged
+---
+
+Uma empresa de ônibus da cidade vem sofrendo uma cerrada concorrência com sua rival, pois nesta cidade não há exclusividade de rotas. Para melhorar seu atendimento e conquistar mais clientes, os gestores decidiram contratar uma empresa para uma grande pesquisa de opinião com seus clientes, descobrindo o perfil, pontos positivos e negativos da empresa, e assim identificar futuras melhorias. Um questionário foi elaborado, foram selecionados por sorteio 5000 clientes que usaram os ônibus da empresa nos últimos seis meses e os dados foram compilados na planilha "pesquisa_onibus".
+
+Sem dinheiro extra para contratar um analista de dados, a empresa resolveu contratar você como "consultor júnior freelance" para apresentar os resultados aos gestores. Verifique erros de digitação, inconsistências nos dados, pontos faltantes, discrepantes e redija um relatório incluindo tabelas, gráficos e resultados obtidos para apresentar ao final da 'reunião' que você foi chamado.
+
+### Pré análise dos dados
+
+Antes de iniciar a análise, prossegue-se com a importação dos dados no R:
+```{r}
+# Carrega a base de dados:
+library(readxl)
+dados <- read_xlsx("4. pesquisa_onibus.xlsx")
+```
+
+
+#### 1.	Quantos dados perdidos há em cada variável? O percentual de dados perdidos em relação ao total é aceitável? 
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse) # Suite de pacotes para manipulação, análise e visualização de dados
+library(kableExtra) # Trabalha com tabelas HTML
+
+# Utiliza o map para verificar quantos registros NA's existem em cada variável. Depois gera tabela para apresentar os valores:
+dados %>%
+  map_df(function(x) sum(is.na(x))) %>%
+  gather(Coluna, Ausentes) %>% 
+  mutate(Percentual = paste0(formatC(Ausentes/nrow(dados)*100, format = "f", digits = 2), "%")) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se que em todas as variáveis disponíveis no banco de dados, existem valores ausentes, porém em nenhuma das variáveis apresentadas, os valores ausentes chegam a representar 1% da massa de dados, logo pode-se afirmar que o percentual de dados ausentes é aceitável, portanto iremos retirar tais registros da análise.
+
+#### 2.	Quantos e quais são os erros de registro nas variáveis? O que vocês acham que precisa ser feito para diminuir tais erros nas próximas pesquisas?
+
+* Variável "Sexo":
+
+```{r}
+dados %>% 
+  group_by(Sexo) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se alguns erros na grafia do Sexo. Para isso, utilizaremos uma função que irá corrigir cada registro errado. Para o registro com Sexo = Criança, iremos excluí-lo da análise.
+
+```{r}
+dados <- dados %>% 
+  mutate(Sexo = recode(Sexo, "Fe" = "Feminino", 
+                       "Fem" = "Feminino", 
+                       "Femi" = "Feminino", 
+                       "Femin" = "Feminino",
+                       "Ma" = "Masculino", 
+                       "Mas" = "Masculino", 
+                       "Masc" = "Masculino", 
+                       "Mascu" = "Masculino"))
+dados %>% 
+  group_by(Sexo) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se, que todas as inconsistências de grafia foram corrigidas, apenas os registros nulo e "criança" serão excluídos.
+
+* Variável "Frequencia":
+
+```{r}
+dados %>% 
+  group_by(Frequencia) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se alguns erros na grafia da variável Para isso, utilizaremos uma função que irá corrigir cada registro errado.
+
+```{r}
+dados <- dados %>% 
+  mutate(Frequencia = recode(Frequencia, "Ev" = "Eventual", 
+                             "Even" = "Eventual", 
+                             "Me" = "Mensal", 
+                             "Men" = "Mensal",
+                             "Mens" = "Mensal", 
+                             "Mensa" = "Mensal", 
+                             "Se" = "Semanal", 
+                             "Sem" = "Semanal", 
+                             "Sema" = "Semanal",
+                             "Seman" = "Semanal"))
+dados %>% 
+  group_by(Frequencia) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se, que todas as inconsistências de grafia foram corrigidas, apenas os registros nulo e "Diário" serão excluídos.
+
+* Variável "Conforto":
+
+```{r}
+dados %>% 
+  group_by(Conforto) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se alguns erros na grafia da variável Para isso, utilizaremos uma função que irá corrigir cada registro errado.
+
+```{r}
+dados <- dados %>% 
+  mutate(Conforto = recode(Conforto, "Ac" = "Aceitável", 
+                           "Ace" = "Aceitável", 
+                           "Acei" = "Aceitável", 
+                           "Aceit" = "Aceitável",
+                           "Ir" = "Irregular", 
+                           "Irr" = "Irregular", 
+                           "Irre" = "Irregular", 
+                           "Irreg" = "Irregular", 
+                           "Pé" = "Péssimo",
+                           "Pés" = "Péssimo", 
+                           "Péss" = "Péssimo", 
+                           "Péssi" = "Péssimo"))
+dados %>% 
+  group_by(Conforto) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se, que todas as inconsistências de grafia foram corrigidas, apenas os registros nulo e "Bom" serão excluídos.
+
+
+* Variável "Rota":
+
+```{r message=FALSE, warning=FALSE}
+dados %>% 
+  group_by(Rota) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se alguns erros na grafia da variável Para isso, utilizaremos uma função que irá corrigir cada registro errado.
+
+```{r}
+dados <- dados %>% 
+  mutate(Rota = recode(Rota, "Car"="Carambola", 
+                       "Cara"="Carambola", 
+                       "Caram"="Carambola", 
+                       "Go"="Goianésia", 
+                       "Goi"="Goianésia", 
+                       "Goia"="Goianésia", 
+                       "Goian"="Goianésia", 
+                       "Ji"="Jilozinho", 
+                       "Jil"="Jilozinho", 
+                       "Jilo"="Jilozinho", 
+                       "Jiloz"="Jilozinho", 
+                       "Pa"="Paranaval", 
+                       "Par"="Paranaval", 
+                       "Para"="Paranaval"))
+dados %>% 
+  group_by(Rota) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se, que todas as inconsistências de grafia foram corrigidas, apenas os registros nulo e "Madureira" serão excluídos.
+
+
+* Variável "Tipo":
+
+```{r message=FALSE, warning=FALSE}
+dados %>% 
+  group_by(Tipo) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se alguns erros na grafia da variável Para isso, utilizaremos uma função que irá corrigir cada registro errado.
+
+```{r}
+dados <- dados %>% 
+  mutate(Tipo = recode(Tipo, "Di"="Direto", 
+                       "Dir"="Direto", 
+                       "Dire"="Direto", 
+                       "Diret"="Direto", 
+                       "Le"="Leito", 
+                       "Lei"="Leito", 
+                       "Pa"="Parador", 
+                       "Par"="Parador", 
+                       "Para"="Parador", 
+                       "Parad" = "Parador", 
+                       "Sem"="Semi-direto", 
+                       "Semi-"="Semi-direto"))
+dados %>% 
+  group_by(Tipo) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se, que todas as inconsistências de grafia foram corrigidas, apenas os registros nulo e "Excursão" serão excluídos.
+
+
+* Variável "Pontualidade":
+
+```{r message=FALSE, warning=FALSE}
+dados %>% 
+  group_by(Pontualidade) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se alguns erros na grafia da variável Para isso, utilizaremos uma função que irá corrigir cada registro errado.
+
+```{r}
+dados <- dados %>% 
+  mutate(Pontualidade = recode(Pontualidade, "Ac"="Aceitável", 
+                               "Ace"="Aceitável", 
+                               "Ex"="Excelente", 
+                               "Exce"="Excelente", 
+                               "Ir"="Irregular", 
+                               "Irr"="Irregular", 
+                               "Irre"="Irregular", 
+                               "Irreg"="Irregular", 
+                               "Pé"="Péssima", 
+                               "Péss"="Péssima", 
+                               "Péssi"="Péssima"))
+dados %>% 
+  group_by(Pontualidade) %>%
+  summarise(Quantidade=n()) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Observa-se, que todas as inconsistências de grafia foram corrigidas, apenas os registros nulo e "Ruim" serão excluídos.
+
+
+* Variáveis "Renda", "Duração", "Idade" e "Volumes":
+
+```{r message=FALSE, warning=FALSE}
+dados %>% 
+  select(Renda, Duracao, Idade, Volumes) %>% 
+  summary()
+```
+
+Observa-se que a variável renda possui um valor negativo. Na variável duração um valor com casas decimais, em Idade valor inferior a 18 e Volume com valor discrepante igual a 42.
+
+Verificamos vários problemas nos registros de cada variável, a sugestão para que as próximas informações venham sem estes erros, é implementar formulários de pesquisa padrão, limitando o usuário a selecionar as opções disponíveis em tela. Isso minimizaria consideravelmente os erros encontrados.
+
+#### 3.	Alguns dados incorretos (fora do padrão) foram colocados na tabela. Quais foram identificados?
+
+Foram apresentados no item acima.
+
+#### 4.	Retirando todas as linhas com dados perdidos e dados incorretos, quantos registos teremos para prosseguir com a análise?
+
+Os erros de grafia já foram corrigidos nos passos acima. Resta fazer agora apenas os filtros dos valores discrepantes que foram encontrados. No código abaixo fazemos estes filtros e removemos os registros nulos.
+
+```{r message=FALSE, warning=FALSE}
+df_aj <- dados %>% 
+  filter(Renda>0, 
+         Duracao>1.1, 
+         Idade>3.2, 
+         Volumes<42, 
+         Volumes != 7.5, 
+         Sexo != "Criança", 
+         Frequencia != "Diário", 
+         Conforto != "Bom", 
+         Rota != "Madureira", 
+         Tipo != "Excursão", 
+         Pontualidade != "Ruim") %>% 
+  na.omit
+
+
+x <- data.frame(registros = c(nrow(df_aj), nrow(dados)), base = c("Final", "Inicial"))
+
+library(plotly) # Pacote para confecção dos gráficos:
+
+p <- plot_ly(x, x=~base, y=~registros, type = "bar") %>% 
+  layout(title = 'Quantidade de registros por tipo de base')
+p
+```
+
+Após a limpeza realizada na base, ficamos com 4.921 registros.
+
+
+## Faça um resumo relatando o perfil do cliente da empresa de ônibus: 
+
+#### 1. Existe preponderância de algum dos sexos entre os clientes da empresa de ônibus?
+
+Para isso, vamos gerar uma gráfico de setores, com a distribuição de mulheres e homens:
+
+```{r message=FALSE, warning=FALSE}
+# Prepara a base para o gráfico
+graf <- df_aj %>% 
+  group_by(Sexo) %>% 
+  summarise(Freq = n()) 
+
+# Gera o gráfico
+p <- plot_ly(graf, labels = ~Sexo, values = ~Freq, type = 'pie') %>% 
+    layout(title = 'Distribuição da variável Sexo')
+p
+
+```
+
+Podemos verificar que, dentre o volume de dados analisados, 54,4% (2.676) dos indivíduos são do Sexo Masculino, enquanto os 45,6% (2.245) restantes são Mulheres. Portanto, apesar de não haver diferença tão expressiva, a quantidade de clientes homens da empresa é superior à quantidade de mulheres.
+
+#### 2.	Os clientes da empresa são predominantemente habituais, ou usam o serviço esporadicamente apenas? 
+
+Vamos começar fazendo um gráfico de colunas com a distribuição da variável "Frequência":
+
+```{r}
+# Prepara a base para o gráfico
+graf <- df_aj %>% 
+  group_by(Frequencia) %>% 
+  summarise(Freq = n()) %>% 
+  mutate(R_Freq = Freq/sum(Freq)) %>% 
+  ungroup() %>% 
+  mutate(Perc = paste0(formatC(R_Freq*100, digits = 2, format = "f"), "%"))
+
+# Gera o gráfico
+p <- plot_ly(graf, x = ~Frequencia, y = ~Freq, type = 'bar', text = ~Perc) %>% 
+    layout(title = 'Distribuição da variável Frequência')
+p
+```
+
+Verificamos que a grande maioria dos clientes (54,74%) possuem o hábito de viajarem semanalmente, 35,26% viajam mansalmente e apenas 10% viajam esporadicamente.
+
+Mas apenas uma análise crua da variável, não traz informações suficientes para tomada de decisões. E se verificarmos a frequência de viagens por sexo?
+
+```{r}
+# Prepara base para o gráfico
+graf <- df_aj %>% 
+  group_by(Frequencia, Sexo) %>% 
+  summarise(Freq = n()) %>% 
+  spread(key = Sexo, value = Freq) %>% 
+  ungroup() %>% 
+  mutate(r_fem = paste0(formatC(Feminino/sum(Feminino)*100, digits = 2, format = "f"), "%"),
+         r_masc = paste0(formatC(Masculino/sum(Masculino)*100, digits = 2, format = "f"), "%"))
+
+# Gera o gráfico
+p <- plot_ly(graf, x = ~Frequencia, y = ~Masculino, type = 'bar', name = "Masculino", text = ~r_masc) %>% 
+  add_trace(y = ~Feminino, name = "Feminino", text = ~r_fem) %>% 
+  layout(title = 'Distribuição da variável Frequência por Sexo', yaxis = list(title = ""))
+p
+```
+
+
+Quando verificamos o hábito de viagem por Sexo, podemos perceber que as mulheres possuem o hábito de realizar viagens com maior frequência, sendo que 69,09% das mulheres viajam semanalmente, enquanto 42,71% dos homens possuem o mesmo hábito. 
+
+O cenário inverte quando se analisa as viagem mensais, enquanto 42,86% dos homens viajam mensalmente apenas 26,19% das mulheres possuem este hábito. 
+
+Cenário semelhante também para as pessoas que viajam esporadicamente. Dentre os homens, 14,42% possuem este perfil e dentre as mulheres 4,72%.
+
+#### 3.	A empresa comprou novos ônibus há um ano, cuida religiosamente de sua manutenção, e por isso crê que os clientes os acham confortáveis. Os dados confirmam isso?
+
+```{r message=FALSE, warning=FALSE}
+# Prepara a base para o gráfico
+graf <- df_aj %>% 
+  group_by(Conforto) %>% 
+  summarise(Freq = n()) %>% 
+  mutate(R_Freq = Freq/sum(Freq)) %>% 
+  ungroup() %>% 
+  mutate(Perc = paste0(formatC(R_Freq*100, digits = 2, format = "f"), "%"))
+
+# Gera o gráfico
+p <- plot_ly(graf, x = ~Conforto, y = ~Freq, type = 'bar', text = ~Perc) %>% 
+    layout(title = 'Distribuição da variável Conforto')
+p
+
+
+graf <- df_aj %>% 
+  group_by(Conforto, Frequencia, Sexo) %>% 
+  summarise(Freq = n()) %>% 
+  ungroup() 
+
+# Gera o gráfico
+p <- plot_ly(graf, x = ~Conforto, y = ~Freq, color = ~Frequencia, type = 'bar', stroke = ~Sexo) 
+p
+```
+
+
+#### 4.	Qual é o destino mais procurado pelos clientes?
+#### 5.	Os ônibus novos mencionados na questão anterior são “executivos”, o que permitiria o seu uso em serviços diretos. Mas, alguns diretores da empresa alegam que isso não é apropriado, pois “a maioria dos clientes” prefere linhas paradoras. Os dados corroboram esta última afirmação?
+#### 6.	A empresa orgulha-se de sua reputação de pontualidade. Os clientes concordam? 
+#### 7.	A empresa, por conta dos investimentos mencionados, pretende ficar apenas com clientes com renda acima de 5 salários mínimos. Os clientes da empresa atendem este requisito? 
+#### 8.	Alguns clientes, no passado, reclamaram muito da duração das viagens. Os dados permitem concluir que a maioria das viagens leva mais de um dia?
+#### 9.	Vocês caracterizariam os clientes da empresa como jovens? 
+#### 10.	Os motoristas vivem reclamando que os passageiros parecem “levar a casa junto com eles” quando viajam, pois levam muitos volumes nos bagageiros dos ônibus. Os dados dão razão aos motoristas? 
+
