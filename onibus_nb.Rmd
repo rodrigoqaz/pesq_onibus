@@ -4,6 +4,7 @@ author: 'Aluno: Rodrigo de Souza Oliveira'
 output:
   html_document:
     df_print: paged
+    code_folding: hide
 ---
 
 Uma empresa de ônibus da cidade vem sofrendo uma cerrada concorrência com sua rival, pois nesta cidade não há exclusividade de rotas. Para melhorar seu atendimento e conquistar mais clientes, os gestores decidiram contratar uma empresa para uma grande pesquisa de opinião com seus clientes, descobrindo o perfil, pontos positivos e negativos da empresa, e assim identificar futuras melhorias. Um questionário foi elaborado, foram selecionados por sorteio 5000 clientes que usaram os ônibus da empresa nos últimos seis meses e os dados foram compilados na planilha "pesquisa_onibus".
@@ -366,34 +367,168 @@ Cenário semelhante também para as pessoas que viajam esporadicamente. Dentre o
 
 #### 3.	A empresa comprou novos ônibus há um ano, cuida religiosamente de sua manutenção, e por isso crê que os clientes os acham confortáveis. Os dados confirmam isso?
 
+Primeiramente, vamos criar um gráfico com a distribuição da variável "Conforto"
+
 ```{r message=FALSE, warning=FALSE}
+# Cria vetores para ordenação dos dados
+ordem_conforto <- c("Péssimo", "Irregular", "Aceitável", "Excelente")
+ordem_frequencia <- c("Semanal", "Mensal", "Eventual")
+
 # Prepara a base para o gráfico
 graf <- df_aj %>% 
   group_by(Conforto) %>% 
   summarise(Freq = n()) %>% 
   mutate(R_Freq = Freq/sum(Freq)) %>% 
   ungroup() %>% 
-  mutate(Perc = paste0(formatC(R_Freq*100, digits = 2, format = "f"), "%"))
+  mutate(Perc = paste0(formatC(R_Freq*100, digits = 2, format = "f"), "%"),
+         Conforto = factor(Conforto, levels = ordem_conforto)) %>% 
+  arrange(Conforto) # ordena
+
+# Cria paleta de cores:
+pal <- c("#d68080", "#d6c080", "#c0d680", "#80d680")
 
 # Gera o gráfico
-p <- plot_ly(graf, x = ~Conforto, y = ~Freq, type = 'bar', text = ~Perc) %>% 
+p <- plot_ly(graf, x = ~Conforto, y = ~Freq, type = 'bar', text = ~Perc, color = ~Conforto, colors = pal) %>% 
     layout(title = 'Distribuição da variável Conforto')
 p
 
+```
 
+Podemos verificar que a grande maioria dos usuários (45,93%), classificaram o conforto dos ônibus como Irregular. 29,69% classificaram como Péssimo, 19,69% como Aceitável e apenas 4,69% como Excelente. 
+
+Essa informação contraria a suspeita da empresa de que, em geral, os usuários achariam que os ônibus são confortáveis.
+
+Se cruzarmos a informação de Conforto dos usuários com Frequência de viagens e Sexo, podemos ter outros *insights* (vide gráfico a seguir), como por exemplo:
+
+* Clientes com hábito de viagens mais constante, tende a achar o conforto dos ônibus pior;
+* Clientes do sexo feminino possuem uma relação de notas "ruins" maior que homens, independente da frequência;
+* Homens que viajam eventualmente, geralmente acham o conforto Aceitável ou Excelente;
+
+```{r}
+# Ajusta a base de dados:
 graf <- df_aj %>% 
   group_by(Conforto, Frequencia, Sexo) %>% 
   summarise(Freq = n()) %>% 
-  ungroup() 
+  ungroup() %>% 
+  mutate(Conforto = factor(Conforto, levels = ordem_conforto),
+         Frequencia = factor(Frequencia, levels = ordem_frequencia)) %>% 
+  arrange(Conforto, Frequencia)
 
 # Gera o gráfico
-p <- plot_ly(graf, x = ~Conforto, y = ~Freq, color = ~Frequencia, type = 'bar', stroke = ~Sexo) 
+p1 <- graf %>% 
+  filter(Sexo == "Feminino") %>% 
+  plot_ly(x = ~Frequencia, y = ~Freq, color = ~Conforto, type = 'bar', legendgroup = ~Conforto, showlegend = F, colors = pal) %>% 
+  layout(xaxis = list(title = "Feminino"))
+  
+p2 <- graf %>% 
+  filter(Sexo == "Masculino") %>% 
+  plot_ly(x = ~Frequencia, y = ~Freq, color = ~Conforto, type = 'bar', legendgroup = ~Conforto, colors = pal) %>% 
+  layout(xaxis = list(title = "Masculino"))
+
+p <- subplot(p1,p2,shareY = T, titleX = T, shareX = T, margin = 0.05)
 p
+
 ```
 
 
 #### 4.	Qual é o destino mais procurado pelos clientes?
+
+Vamos montar uma simples tabela de frequência para responder essa pergunta. Podemos verificar que o volume de viagens para as quatro rotas apresentadas é bem parecido. Destaca-se Paranaval, que possui quase 30% das viagens e Jilozinho, que possui 19,69% das viagens.
+
+```{r}
+# Ajusta a base de dados:
+df_aj %>% 
+  group_by(Rota) %>% 
+  summarise(Quantidade = n()) %>% 
+  ungroup() %>% 
+  mutate(Percentual = paste0(formatC(Quantidade/sum(Quantidade)*100, digits = 2, format = "f"), "%")) %>% 
+  ungroup() %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+
 #### 5.	Os ônibus novos mencionados na questão anterior são “executivos”, o que permitiria o seu uso em serviços diretos. Mas, alguns diretores da empresa alegam que isso não é apropriado, pois “a maioria dos clientes” prefere linhas paradoras. Os dados corroboram esta última afirmação?
+
+Vamos novamente criar uma tabela com a distribuição da variável Tipo. Podemos perceber que os dois tipos de ônibus mencionados (direto e parador), possuem quantidade de viagens semelhante. Ambas representam cerca de 70% das viagens, portanto podemos apresentar outras visões que auxiliam a empresa na hora de tomar a decisão.
+
+```{r}
+# Ajusta a base de dados:
+df_aj %>% 
+  group_by(Tipo) %>% 
+  summarise(Quantidade = n()) %>% 
+  ungroup() %>% 
+  mutate(Percentual = paste0(formatC(Quantidade/sum(Quantidade)*100, digits = 2, format = "f"), "%")) %>% 
+  ungroup() %>% 
+  arrange(desc(Quantidade)) %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+```{r}
+graf <- df_aj %>% 
+  group_by(Sexo, Frequencia, Conforto, Rota) %>% 
+  summarise(value = n()) %>% 
+  ungroup()
+
+graf <- rbind(graf %>%
+              select(Sexo,Frequencia, value) %>%
+              rename(source = Sexo, target = Frequencia),
+              graf %>%
+              select(Frequencia, Conforto, value) %>%
+              rename(source = Frequencia, target = Conforto),
+              graf %>%
+              select(Conforto, Rota, value) %>%
+              rename(source = Conforto, target = Rota)
+            )
+
+graf <- graf %>% 
+  group_by(source, target) %>% 
+  summarise(value = sum(value))
+
+node_names <- factor(sort(unique(as.character(unname(unlist(graf[1:2]))))))
+nodes <- data.frame(name = node_names)
+
+links <- data.frame(source = match(graf$source, node_names) - 1, 
+                    target = match(graf$target, node_names) - 1,
+                    value = graf$value)
+links <- links[!is.na(links$source), ]
+
+
+library(plotly)
+
+p <- plot_ly(
+  type = "sankey",
+  orientation = "h",
+  
+  node = list(
+    label = node_names,
+    color = rep("blue", length(node_names)),
+    pad = 15,
+    thickness = 20,
+    line = list(
+      color = "black",
+      width = 0.5
+    )
+  ),
+  
+  link = list(
+    source = links$source,
+    target = links$target,
+    value =  links$value
+  )
+) %>% 
+  layout(
+    title = "Basic Sankey Diagram",
+    font = list(
+      size = 10
+    )
+  )
+p
+
+```
+
+
 #### 6.	A empresa orgulha-se de sua reputação de pontualidade. Os clientes concordam? 
 #### 7.	A empresa, por conta dos investimentos mencionados, pretende ficar apenas com clientes com renda acima de 5 salários mínimos. Os clientes da empresa atendem este requisito? 
 #### 8.	Alguns clientes, no passado, reclamaram muito da duração das viagens. Os dados permitem concluir que a maioria das viagens leva mais de um dia?
