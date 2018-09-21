@@ -13,7 +13,12 @@ Sem dinheiro extra para contratar um analista de dados, a empresa resolveu contr
 
 ### Pré análise dos dados
 
-Antes de iniciar a análise, prossegue-se com a importação dos dados no R:
+Para prosseguir com a análise da base de dados mencionada, optei por utilizar o software R, cujo relatório será confeccionado no RMarkdown e apresentado em HTML para que possa manter a interatividade dos gráficos propostos.
+
+Por padrão, apresentarei apenas os resultados, porém caso seja de interesse, é possível verificar todos os códigos utilizados, navegando pelo botão "code", acima de cada análise. Caso queiram acesso aos dados e códigos, disponibilizei tudo lá no meu [Github](https://github.com/rodrigoqaz/pesq_onibus).
+
+O primeiro passo que vamos seguir é a importação dos dados no R. Com os dados na base, já podemos começar a responder as questões abaixo:
+
 ```{r}
 # Carrega a base de dados:
 library(readxl)
@@ -24,7 +29,7 @@ dados <- read_xlsx("4. pesquisa_onibus.xlsx")
 #### 1.	Quantos dados perdidos há em cada variável? O percentual de dados perdidos em relação ao total é aceitável? 
 
 ```{r message=FALSE, warning=FALSE}
-library(tidyverse) # Suite de pacotes para manipulação, análise e visualização de dados
+library(tidyverse) # Suite de pacotes para manipulação, análise e visualização
 library(kableExtra) # Trabalha com tabelas HTML
 
 # Utiliza o map para verificar quantos registros NA's existem em cada variável. Depois gera tabela para apresentar os valores:
@@ -36,9 +41,11 @@ dados %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
-Observa-se que em todas as variáveis disponíveis no banco de dados, existem valores ausentes, porém em nenhuma das variáveis apresentadas, os valores ausentes chegam a representar 1% da massa de dados, logo pode-se afirmar que o percentual de dados ausentes é aceitável, portanto iremos retirar tais registros da análise.
+Podemos verificar que em todas as variáveis disponíveis no banco de dados, existem valores ausentes, porém em nenhuma das variáveis apresentadas, os valores ausentes chegam a representar 1% da massa de dados, logo pode-se afirmar que o percentual de dados ausentes é aceitável, portanto iremos retirar tais registros da análise.
 
 #### 2.	Quantos e quais são os erros de registro nas variáveis? O que vocês acham que precisa ser feito para diminuir tais erros nas próximas pesquisas?
+
+Os itens abaixo serão utilizados para responder as perguntas 2 e 3. Cada item corresponde à uma variável.
 
 * Variável "Sexo":
 
@@ -267,7 +274,7 @@ Foram apresentados no item acima.
 
 #### 4.	Retirando todas as linhas com dados perdidos e dados incorretos, quantos registos teremos para prosseguir com a análise?
 
-Os erros de grafia já foram corrigidos nos passos acima. Resta fazer agora apenas os filtros dos valores discrepantes que foram encontrados. No código abaixo fazemos estes filtros e removemos os registros nulos.
+Os erros de grafia já foram corrigidos nos passos acima. Resta fazer agora apenas os filtros dos valores discrepantes que foram encontrados. No código a seguir fazemos estes filtros e removemos os registros nulos.
 
 ```{r message=FALSE, warning=FALSE}
 df_aj <- dados %>% 
@@ -294,7 +301,7 @@ p <- plot_ly(x, x=~base, y=~registros, type = "bar") %>%
 p
 ```
 
-Após a limpeza realizada na base, ficamos com 4.921 registros.
+Após a limpeza realizada na base, ficamos com 4.921 registros!
 
 
 ## Faça um resumo relatando o perfil do cliente da empresa de ônibus: 
@@ -450,7 +457,7 @@ df_aj %>%
 
 #### 5.	Os ônibus novos mencionados na questão anterior são “executivos”, o que permitiria o seu uso em serviços diretos. Mas, alguns diretores da empresa alegam que isso não é apropriado, pois “a maioria dos clientes” prefere linhas paradoras. Os dados corroboram esta última afirmação?
 
-Vamos novamente criar uma tabela com a distribuição da variável Tipo. Podemos perceber que os dois tipos de ônibus mencionados (direto e parador), possuem quantidade de viagens semelhante. Ambas representam cerca de 70% das viagens, portanto podemos apresentar outras visões que auxiliam a empresa na hora de tomar a decisão.
+Vamos novamente criar uma tabela com a distribuição da variável Tipo. Podemos perceber que os dois tipos de ônibus mencionados (direto e parador), possuem quantidade de viagens semelhante. Ambas representam cerca de 70% das viagens.
 
 ```{r}
 # Ajusta a base de dados:
@@ -465,73 +472,91 @@ df_aj %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
 ```
 
-```{r}
+
+#### 6.	A empresa orgulha-se de sua reputação de pontualidade. Os clientes concordam? 
+
+Podemos verificar no gráfico abaixo que quase 80% dos clientes acham a pontualidade dos ônibus Péssima ou Irregular.
+Vemos que o orgulho da empresa se baseia apenas em falácias.
+
+```{r message=FALSE, warning=FALSE}
+# Prepara a base para o gráfico
+ordem_pontualidade <- c("Péssima", "Irregular", "Aceitável", "Excelente")
+
 graf <- df_aj %>% 
-  group_by(Sexo, Frequencia, Conforto, Rota) %>% 
-  summarise(value = n()) %>% 
-  ungroup()
+  group_by(Pontualidade) %>% 
+  summarise(Freq = n()) %>% 
+  mutate(R_Freq = Freq/sum(Freq)) %>% 
+  ungroup() %>% 
+  mutate(Perc = paste0(formatC(R_Freq*100, digits = 2, format = "f"), "%"),
+         Pontualidade = factor(Pontualidade, levels = ordem_pontualidade)) %>% 
+  arrange(Pontualidade) # ordena
 
-graf <- rbind(graf %>%
-              select(Sexo,Frequencia, value) %>%
-              rename(source = Sexo, target = Frequencia),
-              graf %>%
-              select(Frequencia, Conforto, value) %>%
-              rename(source = Frequencia, target = Conforto),
-              graf %>%
-              select(Conforto, Rota, value) %>%
-              rename(source = Conforto, target = Rota)
-            )
+# Cria paleta de cores:
+pal <- c("#d68080", "#d6c080", "#c0d680", "#80d680")
 
-graf <- graf %>% 
-  group_by(source, target) %>% 
-  summarise(value = sum(value))
-
-node_names <- factor(sort(unique(as.character(unname(unlist(graf[1:2]))))))
-nodes <- data.frame(name = node_names)
-
-links <- data.frame(source = match(graf$source, node_names) - 1, 
-                    target = match(graf$target, node_names) - 1,
-                    value = graf$value)
-links <- links[!is.na(links$source), ]
+# Gera o gráfico
+p <- plot_ly(graf, labels = ~Pontualidade, values = ~Freq, type = 'pie', marker = list(colors = pal), textinfo = 'label+percent', textposition = 'outside') %>% 
+    layout(title = 'Distribuição da variável Pontualidade')
+p
+```
 
 
-library(plotly)
+#### 7.	A empresa, por conta dos investimentos mencionados, pretende ficar apenas com clientes com renda acima de 5 salários mínimos. Os clientes da empresa atendem este requisito? 
 
-p <- plot_ly(
-  type = "sankey",
-  orientation = "h",
-  
-  node = list(
-    label = node_names,
-    color = rep("blue", length(node_names)),
-    pad = 15,
-    thickness = 20,
-    line = list(
-      color = "black",
-      width = 0.5
-    )
-  ),
-  
-  link = list(
-    source = links$source,
-    target = links$target,
-    value =  links$value
-  )
-) %>% 
-  layout(
-    title = "Basic Sankey Diagram",
-    font = list(
-      size = 10
-    )
-  )
+A forma que os valores estão apresentados, sugerem que os dados estejam apresentados em salários mínimos. Podemos observar no Histograma abaixo que a variável Renda apresenta uma distribuição assimétrica à direita com valores muito altos (acima de 50 salários).
+
+```{r}
+p <- plot_ly(df_aj, x = ~Renda, type = "histogram", histnorm = "probability")%>% 
+    layout(title = 'Histograma da variável renda')
+p
+```
+
+Pois bem, para nos ajudar a resolver o problema proposto, vamos plotar um histograma acumulado da variável.
+
+Podemos verificar, que cerca de 39% dos clientes da empresa possuem renda de até 5 salários mínimos. Logo, a empresa deve ficar ciente que, caso queira segmentar o perfil de seus clientes para acima de 5 salários mínimo, a mesma deixará de atender 39% da demanda atual.
+
+```{r message=FALSE, warning=FALSE}
+
+p <- plot_ly(df_aj, x = ~Renda, type = "histogram", histnorm = "probability", cumulative = list(enabled=TRUE))%>% 
+    layout(title = 'Histograma acumulado da variável renda')
 p
 
 ```
 
 
-#### 6.	A empresa orgulha-se de sua reputação de pontualidade. Os clientes concordam? 
-#### 7.	A empresa, por conta dos investimentos mencionados, pretende ficar apenas com clientes com renda acima de 5 salários mínimos. Os clientes da empresa atendem este requisito? 
 #### 8.	Alguns clientes, no passado, reclamaram muito da duração das viagens. Os dados permitem concluir que a maioria das viagens leva mais de um dia?
+
+```{r}
+df_aj %>% 
+  mutate(`Duração` = ifelse(Duracao <= 24, 'Até 1 dia', 'Mais que 1 dia')) %>% 
+  group_by(`Duração`) %>% 
+  summarise(Quantidade = n()) %>% 
+  mutate(Percentual = paste0(formatC(Quantidade/sum(Quantidade)*100, digits = 2, format = "f"), "%")) %>% 
+  ungroup() %>% 
+  kable(align = "c") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Podemos verificar que 55,62% das viagens levam até 1 dia e 44,38% levam mais que 1 dia.
+
 #### 9.	Vocês caracterizariam os clientes da empresa como jovens? 
+
+Para responder essa questão, vamos utilizar o Box-Plot. Apresentamos a seguir o gráfico com a distribuição de Idade por Sexo.
+Podemos verificar, em uma análise superficial que as mulheres possuem idade levemente maior que os homens. Pois bem, em relação à pergunta, acredito que podemos sim dizer que os clientes são relativamente jovens, visto que 75% dos homens (3º quartil) possuem até 40 anos e 75% das mulheres até 43 anos.
+
+```{r message=FALSE, warning=FALSE}
+p <- plot_ly(df_aj, y = ~Idade[Sexo=="Masculino"], type = "box", name = "Masculino") %>% 
+  add_trace(y = ~Idade[Sexo=="Feminino"], name = "Feminino") %>% 
+  layout(title = 'Box-Plot da variável idade por sexo', yaxis = list(title = "Idade"))
+p
+```
+
 #### 10.	Os motoristas vivem reclamando que os passageiros parecem “levar a casa junto com eles” quando viajam, pois levam muitos volumes nos bagageiros dos ônibus. Os dados dão razão aos motoristas? 
 
+Podemos observar no gráfico abaixo, que 22,7% dos cliente não levam nenhum volume e 31,8% levam apenas 1 volume em suas viagens, logo mais da meta dos passageiros levam até um volume em suas viagens. Tal informação contradiz a afirmação dos motoristas, caso nos limitemos a analisar apenas a quantidade de volumes. Para responder essa questão com mais precisão, deverímos ter informações como peso e dimensões dos volumes, onde teríamos maior assertividade na resposta. 
+
+```{r message=FALSE, warning=FALSE}
+p <- plot_ly(df_aj, x = ~Volumes, type = "histogram", histnorm = "probability")%>% 
+    layout(title = 'Histograma da quantidade de volumes levados pelos clientes')
+p
+```
